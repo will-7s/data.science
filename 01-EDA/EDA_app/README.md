@@ -1,6 +1,6 @@
 # Exploratory Data Analysis Web App
 
-An interactive web application for exploratory data analysis (EDA), *"fast"* data cleaning (for visualization), and data visualization.  
+An interactive web application for exploratory data analysis (EDA), *"fast"* data cleaning (for visualization and descriptive statistics), and data visualization.  
 The app helps users inspect datasets, explore distributions, identify relationships, and generate meaningful insights through interactive charts and filters.
 
 ## Features
@@ -38,7 +38,6 @@ project-root/
 ├── data_loader.py
 ├── plots.py
 ├── requirements.txt
-├── Procfile
 └── README.md
 ```
 
@@ -54,8 +53,8 @@ Make sure you have:
 ### Local setup
 
 ```bash
-git clone https://github.com/your-username/eda-web-app.git
-cd eda-web-app
+git clone https://github.com/will-7s/data.science.git
+cd 01-EDA/EDA_app/
 python -m venv venv
 source venv/bin/activate   # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
@@ -64,7 +63,7 @@ pip install -r requirements.txt
 ## Run the app locally
 
 ```bash
-python app.py
+python eda_app.py
 ```
 
 Then open the app in your browser at:
@@ -84,47 +83,13 @@ http://127.0.0.1:8050
 ## Example questions the app can answer
 
 - How are the variables distributed?
+- What variables show to have a good correlation?
 - Which features contain missing values?
+- What is the percentage of potential outliers?
 - Are there correlations between numerical variables?
 - Which categories dominate the dataset?
-- Do certain groups show different behavior over time?
-- Is there a relationship between price and rating, or between status and outcome?
+- Is there a relationship between a variable and the outcome?
 
-## Visual Examples
-
-Add screenshots or GIFs here to showcase the interface and the main charts.
-
-```md
-
-
-
-```
-
-## Deployment
-
-This application is designed to be deployed online using a cloud platform such as Heroku, Render, or another hosting service.
-
-### Heroku deployment example
-
-```bash
-heroku login
-heroku create your-app-name
-git push heroku main
-```
-
-Make sure your application includes:
-- a `Procfile`
-- a `requirements.txt`
-- the correct host/port settings for production
-
-## Configuration
-
-You can customize the app through environment variables or configuration files, for example:
-
-- `DEBUG`
-- `PORT`
-- `DATA_PATH`
-- `MAPBOX_TOKEN`
 
 ## Data and analysis workflow
 
@@ -157,7 +122,6 @@ Planned improvements may include:
 - Automatic insight generation
 - Support for more file formats
 - Machine learning integration
-- Enhanced geographic visualizations
 
 ## License
 
