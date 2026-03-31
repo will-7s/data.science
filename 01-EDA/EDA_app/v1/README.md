@@ -1,4 +1,4 @@
-# EDA Dashboard Application
+# EDA Dashboard Application - v1
 
 This is a professional, multi-component web application built with Dash and Python that allows users to upload data files and perform automated Exploratory Data Analysis (EDA). The application handles both numeric and categorical data, generates visualizations, and runs appropriate statistical tests.
 
