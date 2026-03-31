@@ -5,7 +5,7 @@ The app helps users inspect datasets, explore distributions, identify relationsh
 
 ## Features
 
-- Upload and analyze tabular datasets (CSV, Excel).
+- Upload and analyze tabular datasets (CSV).
 - Perform quick data inspection: shape, data types, missing values, duplicates, and summary statistics.
 - Explore univariate and bivariate analysis.
 - Visualize distributions with histograms, bar charts, box plots, scatter plots, and correlation heatmaps.
@@ -54,7 +54,7 @@ Make sure you have:
 
 ```bash
 git clone https://github.com/will-7s/data.science.git
-cd 01-EDA/EDA_app/
+cd 01-EDA/v1/EDA_app/       #or v2 ... depending on the version
 python -m venv venv
 source venv/bin/activate   # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
