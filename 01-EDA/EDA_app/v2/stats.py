@@ -40,7 +40,7 @@ def normality_test(arr: np.ndarray) -> tuple[float | None, float | None]:
 def normality_label(p_value: float | None) -> str:
     """Convert a p-value to a readable normality verdict."""
     if p_value is None:
-        return "Insufficient data"
+        return "Insufficient data or Numerical instability"
     return f"Normal (p={p_value:.3f})" if p_value > 0.05 else f"Non-normal (p={p_value:.3f})"
 
 

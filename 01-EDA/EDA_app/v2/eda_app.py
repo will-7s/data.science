@@ -108,7 +108,7 @@ app.layout = dbc.Container([
                         html.Hr(),
                         html.Div(id='normality-tests',
                                  className="stats-card p-2",
-                                 style={'overflowY': 'auto', 'maxHeight': '40vh'}),
+                                 style={'overflowY': 'auto', 'height': '100vh'}),
                     ], width=3),
 
                     # main chart + extras
