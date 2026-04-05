@@ -55,7 +55,7 @@ app.layout = dbc.Container([
                             inputStyle={"marginRight": "6px"},
                         ),
                         html.Hr(className="mt-3 mb-2"),
-                        html.Div(id='univariate-normality', style={'overflowY': 'auto', 'maxHeight': '60vh'}),
+                        html.Div(id='univariate-normality', style={'overflowY': 'auto', 'maxHeight': '57vh'}),
                     ], width=3),
                     dbc.Col([
                         dcc.Graph(id='univariate-plot'),
