@@ -17,7 +17,6 @@ A production-ready Exploratory Data Analysis web application built with **Dash**
 | **Chi‑square effect sizes** | Not available | **Cramér's V** + **Tschuprow's T** |
 | **Outlier detection** | Not available | **IQR × 1.5** rule with percentage display |
 | **Mode handling** | Simple mode | **Frequency + tie detection** |
-| **File format support** | CSV + Excel | **9 formats**: CSV, TSV, JSON, JSONL, XLSX, XLS, ODS, Parquet |
 
 ---
 
