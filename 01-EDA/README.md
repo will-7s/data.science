@@ -1,7 +1,8 @@
 # Exploratory Data Analysis Project
 
 This is focused on using statistics and data visualization to turn raw data into useful insights. It includes exploratory data analysis, data cleaning, and interpretation of results through clear and relevant charts.
-https://huggingface.co/spaces/will-7s/eda_app
+
+To test the app: https://huggingface.co/spaces/will-7s/eda_app
 
 ## Overview
 

@@ -86,7 +86,6 @@ def register(app):
         [Output("bivariate-plot", "figure"),
          Output("bivariate-stats", "children"),
          Output("bivariate-tests", "children"),
-         Output("normality-tests", "children"),
          Output("pairwise-correlation", "figure"),
          Output("correlation-insights", "children"),
          Output("bivariate-pair-type", "children")],
@@ -97,7 +96,7 @@ def register(app):
         empty_fig = charts.empty()
         empty_div = html.Div()
         if not store.is_loaded() or var1 is None or var2 is None:
-            return empty_fig, empty_div, empty_div, empty_div, empty_fig, empty_div, empty_div
+            return empty_fig, empty_div, empty_div, empty_fig, empty_div, empty_div
         t1 = store.col_meta[var1]
         t2 = store.col_meta[var2]
         d1 = store.dataset[var1]
@@ -121,7 +120,6 @@ def register(app):
             stats_panel = ui.association_panel()
             badge = "Categorical × Categorical — Contingency heatmap"
         tests = stats.bivariate_test(var1, var2, store.dataset, store.col_meta)
-        norm_panel = ui.normality_panel(store.dataset, store.num_cols)
         mat, cols = stats.correlation_matrix(store.dataset, store.num_cols)
         if mat is not None:
             corr_fig = charts.correlation_heatmap(mat, cols)
@@ -129,4 +127,4 @@ def register(app):
         else:
             corr_fig = charts.empty("Need at least 2 numeric columns")
             insights = html.Div("Not enough numeric columns for correlation matrix.")
-        return fig, stats_panel, ui.test_panel(tests), norm_panel, corr_fig, insights, html.Div(badge, style={"fontWeight": "bold", "marginTop": "8px"})
+        return fig, stats_panel, ui.test_panel(tests), corr_fig, insights, html.Div(badge, style={"fontWeight": "bold", "marginTop": "8px"})

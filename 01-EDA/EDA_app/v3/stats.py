@@ -340,18 +340,27 @@ def _test_num_cat(num, cat) -> dict:
 
 
 def _test_cat_cat(a, b) -> dict:
+    """
+    Optimized association test for categorical variables. 
+    Implements Chi-square with generalized Fisher's Exact test for kxr tables.
+    """
     ua, ub  = np.unique(a), np.unique(b)
     k, r    = len(ua), len(ub)
-    ct      = np.array([[np.sum((a==va)&(b==vb)) for vb in ub] for va in ua], dtype=float)
+    # Build contingency table
+    ct      = np.array([[np.sum((a==va)&(b==vb)) for vb in ub] for va in ua], dtype=int)
     n       = ct.sum()
-    chi2, p, dof, exp = sp.chi2_contingency(ct)
+    
+    # Chi-square and basic checks
+    chi2, p_chi, dof, exp = sp.chi2_contingency(ct)
     min_exp = exp.min()
     low_pct = (exp < 5).mean() * 100
-    valid   = (min_exp >= 1) and (low_pct <= 20)
-    sig     = "✓ sig." if p < ALPHA else "✗ n.s."
+    chi_valid = (min_exp >= 1) and (low_pct <= 20)
+    sig_chi = "✓ sig." if p_chi < ALPHA else "✗ n.s."
+    
+    # Effect Size (Cramer's V)
     min_dim = min(k, r)
-    cv = float(np.sqrt(chi2 / (n*(min_dim-1)))) if min_dim>1 and n>0 else float('nan')
-    tt = float(np.sqrt(chi2 / (n*np.sqrt((k-1)*(r-1))))) if (k-1)*(r-1)>0 and n>0 else float('nan')
+    cv = float(np.sqrt(chi2 / (n*(min_dim-1)))) if min_dim > 1 and n > 0 else float('nan')
+    tt = float(np.sqrt(chi2 / (n*np.sqrt((k-1)*(r-1))))) if (k-1)*(r-1) > 0 and n > 0 else float('nan')
 
     def _strength(v):
         thresholds = {1:(0.10,0.30,0.50), 2:(0.07,0.21,0.35), 3:(0.06,0.17,0.29)}
@@ -362,26 +371,43 @@ def _test_cat_cat(a, b) -> dict:
         f"Table: {k}×{r}  |  n = {n}",
         "",
         "── Chi-square Test of Independence ──",
-        f"χ²({dof}) = {chi2:.4f},  p = {p:.4f}  {sig}",
+        f"χ²({dof}) = {chi2:.4f},  p = {p_chi:.4f}  {sig_chi}",
         f"  Min expected frequency = {min_exp:.2f}  {'✓ ≥ 1' if min_exp>=1 else '✗ < 1 — unreliable'}",
         f"  Cells with expected < 5: {low_pct:.1f}%  {'✓ ≤ 20%' if low_pct<=20 else '✗ > 20% — unreliable'}",
-    ] + (["  ⚠ Assumptions violated — interpret χ² cautiously."] if not valid else []) + [
+    ]
+
+    # --- GENERALIZED FISHER'S EXACT TEST ---
+    # Triggered if assumptions for Chi2 are not met or if table is small
+    use_fisher = not chi_valid or (k * r <= 12)
+    
+    if use_fisher:
+        try:
+            # Note: Scipy's fisher_exact only returns odds_ratio for 2x2.
+            # For kxr, it returns only the p-value.
+            res_fisher = sp.fisher_exact(ct)
+            p_f = res_fisher.pvalue if hasattr(res_fisher, 'pvalue') else res_fisher[1]
+            sig_f = "✓ sig." if p_f < ALPHA else "✗ n.s."
+            
+            results += [
+                "",
+                f"── Fisher's Exact Test ({k}×{r}) ──",
+                f"p = {p_f:.4f}  {sig_f}",
+                "  Used because Chi-square assumptions are weak or table is small."
+            ]
+            if k == 2 and r == 2:
+                # Add odds ratio only for 2x2
+                odds = res_fisher.statistic if hasattr(res_fisher, 'statistic') else res_fisher[0]
+                results.append(f"  Odds ratio = {odds:.4f}")
+        except (ValueError, Exception):
+            # Fallback if the table is too large for Fisher's complexity
+            results.append("\nFisher's Exact: skipped (too complex/unsupported for this table size).")
+    
+    results += [
         "",
         "── Effect Sizes ──",
         f"Cramér's V    = {cv:.4f}  ({_strength(cv)})" if not np.isnan(cv) else "Cramér's V: n/a",
         f"Tschuprow's T = {tt:.4f}" if not np.isnan(tt) else "Tschuprow's T: n/a",
         "  V ∈ [0,1]: 0 = no assoc, 1 = perfect. T ≤ V for non-square tables.",
     ]
-
-    if k == 2 and r == 2:
-        oddsratio, fp = sp.fisher_exact(ct.astype(int))
-        results += [
-            "",
-            "── Fisher's Exact Test (2×2) ──",
-            f"Odds ratio = {oddsratio:.4f},  p = {fp:.4f}  {'✓ sig.' if fp<ALPHA else '✗ n.s.'}",
-            "  Exact p-value; preferred when expected frequencies are low.",
-        ]
-    else:
-        results.append(f"Fisher's exact: not applicable ({k}×{r} table — requires 2×2).")
 
     return {"test_name": "Association Tests", "results": results}

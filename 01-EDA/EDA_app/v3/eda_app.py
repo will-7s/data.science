@@ -72,9 +72,9 @@ app.layout = dbc.Container([
                         dcc.Dropdown(id='bivariate-var2', clearable=False),
                         html.Div(id='bivariate-pair-type', className="mt-2"),
                         html.Hr(className="mt-3 mb-2"),
-                        html.Div(id='bivariate-tests', style={'overflowY': 'auto', 'maxHeight': '55vh'}),
+                        html.Div(id='bivariate-tests', style={'overflowY': 'auto', 'maxHeight': '100vh'}),
                         html.Hr(className="mt-2 mb-2"),
-                        html.Div(id='normality-tests', style={'overflowY': 'auto', 'maxHeight': '60vh', 'fontSize': '12px'}),
+                        html.Div(id='correlation-insights', style={'overflowY': 'auto', 'maxHeight': '100vh', 'fontSize': '12px'}),
                     ], width=3),
                     dbc.Col([
                         dcc.Graph(id='bivariate-plot'),
@@ -82,7 +82,6 @@ app.layout = dbc.Container([
                         html.Div([
                             html.H5("Pairwise Correlation Matrix", className="mt-4 mb-2"),
                             dcc.Graph(id='pairwise-correlation'),
-                            html.Div(id='correlation-insights', style=_CARD),
                         ], id='corr-section'),
                     ], width=9),
                 ], className="mt-3"),
