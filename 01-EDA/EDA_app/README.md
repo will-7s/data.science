@@ -61,7 +61,7 @@ Make sure you have:
 
 ```bash
 git clone https://github.com/will-7s/data.science.git
-cd 01-EDA/v1/EDA_app/       #or v2 ... depending on the version
+cd 01-EDA/v3/EDA_app/       #or v4 ... depending on the (last)version
 python -m venv venv
 source venv/bin/activate   # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
