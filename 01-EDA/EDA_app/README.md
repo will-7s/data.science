@@ -3,9 +3,12 @@
 An interactive web application for exploratory data analysis (EDA), *"fast"* data cleaning (for visualization and descriptive statistics), and data visualization.  
 The app helps users inspect datasets, explore distributions, identify relationships, and generate meaningful insights through interactive charts and filters.
 
+To use the app online: https://huggingface.co/spaces/will-7s/eda_app
+
+
 ## Features
 
-- Upload and analyze tabular datasets (CSV).
+- Upload and analyze datasets of several natures.
 - Perform quick data inspection: shape, data types, missing values, duplicates, and summary statistics.
 - Explore univariate and bivariate analysis.
 - Visualize distributions with histograms, bar charts, box plots, scatter plots, and correlation heatmaps.
@@ -16,7 +19,7 @@ The app helps users inspect datasets, explore distributions, identify relationsh
 
 Exploratory data analysis is the first step in turning raw data into actionable knowledge.  
 This application is designed to make that process faster, easier, and more interactive for analysts, students, and decision-makers.
-It is a first key step that allows a fast analysis of the dataset and to draw meaninful insights 
+It is a first key step that allows a fast analysis of the dataset and to draw meaningful insights 
 
 ## Technology Stack
 
@@ -33,10 +36,14 @@ It is a first key step that allows a fast analysis of the dataset and to draw me
 project-root/
 │
 ├── eda_app.py
-├── statistical_tests.py
+├── stats.py
 ├── callbacks.py
-├── data_loader.py
-├── plots.py
+├── loader.py
+├── parsers.py
+├── charts.py
+├── store.py
+├── ui.py
+├── utils.py
 ├── requirements.txt
 └── README.md
 ```
@@ -86,9 +93,10 @@ http://127.0.0.1:8050
 - What variables show to have a good correlation?
 - Which features contain missing values?
 - What is the percentage of potential outliers?
-- Are there correlations between numerical variables?
+- Are there correlations between numeric variables?
 - Which categories dominate the dataset?
-- Is there a relationship between a variable and the outcome?
+- Is there a association between two categorical variables?
+- Is there a relationship/association between a variable and the outcome?
 
 
 ## Data and analysis workflow
