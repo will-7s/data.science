@@ -1,24 +1,30 @@
 """
 callbacks.py  —  Dash callback registration.
 
-Performance notes
------------------
+Performance design
+------------------
 Correlation matrix
-    Moved into its own callback (on_corr_matrix) triggered only by dataset
-    upload, not by every bivariate variable change.  store.get_corr_matrix()
-    returns a cached result — O(1) after first call.
+    store.get_corr_matrix() is O(1) — result computed once at upload time
+    and cached.  on_bivariate reads from the cache on every call; the matrix
+    re-renders only when the user changes var1/var2 (which is correct UX),
+    but the underlying numpy work is never repeated.
+
+    The previous split into a separate on_corr_matrix callback (triggered
+    only by upload) broke the display: pairwise-correlation and
+    correlation-insights were never populated when the user interacted with
+    the bivariate dropdowns.  Merged back into on_bivariate — cost is
+    negligible because the cache hit is O(1).
 
 clean arrays
     on_univariate reads store.clean_arrays[variable] (pre-stripped at load
-    time) instead of re-running drop_nan on every interaction.
+    time) instead of re-running drop_nan on every callback.
 
-on_bivariate split
-    Figure + stats panel and statistical tests are triggered by variable
-    selection.  The correlation matrix panel is independent and does not
-    re-render when the user changes var1/var2.
+on_bivariate
+    NaN mask computed once with a single boolean expression.
+    Dead code (duplicate mask line) removed.
 """
 import numpy as np
-from dash import html, Input, Output, State, callback_context
+from dash import html, Input, Output, State
 import store, loader, stats, charts, ui
 
 
@@ -91,7 +97,7 @@ def register(app):
         is_num = store.col_meta[variable] == "numeric"
 
         if is_num:
-            # Use pre-stripped array from store — no re-scanning for NaN
+            # Pre-stripped array from store — no re-scanning NaN on every call
             clean       = store.clean_arrays[variable]
             fig         = (charts.histogram(clean, variable)
                            if plot_type == "hist"
@@ -107,30 +113,43 @@ def register(app):
 
         return fig, stats_panel, norm_panel
 
-    # ── Bivariate — plot + stats + tests ──────────────────────────────────────
+    # ── Bivariate ─────────────────────────────────────────────────────────────
+    # Outputs include pairwise-correlation and correlation-insights so that
+    # they are always visible in the bivariate tab regardless of which
+    # variable pair is selected.  The correlation matrix itself is served
+    # from store.get_corr_matrix() — O(1) cache hit, no numpy recomputation.
     @app.callback(
-        [Output("bivariate-plot",      "figure"),
-         Output("bivariate-stats",     "children"),
-         Output("bivariate-tests",     "children"),
-         Output("bivariate-pair-type", "children")],
+        [Output("bivariate-plot",       "figure"),
+         Output("bivariate-stats",      "children"),
+         Output("bivariate-tests",      "children"),
+         Output("pairwise-correlation", "figure"),
+         Output("correlation-insights", "children"),
+         Output("bivariate-pair-type",  "children")],
         [Input("bivariate-var1", "value"),
          Input("bivariate-var2", "value")],
     )
     def on_bivariate(var1, var2):
         empty_fig = charts.empty()
         empty_div = html.Div()
+
+        # ── Correlation matrix — O(1) cache read ─────────────────────────────
+        mat, corr_cols = store.get_corr_matrix()
+        if mat is not None:
+            corr_fig    = charts.correlation_heatmap(mat, corr_cols)
+            corr_insights = ui.correlation_insights_panel(mat, corr_cols)
+        else:
+            corr_fig    = charts.empty("Need at least 2 numeric columns")
+            corr_insights = html.Div("Not enough numeric columns for correlation matrix.")
+
         if not store.is_loaded() or var1 is None or var2 is None:
-            return empty_fig, empty_div, empty_div, empty_div
+            return empty_fig, empty_div, empty_div, corr_fig, corr_insights, empty_div
 
         t1, t2 = store.col_meta[var1], store.col_meta[var2]
         d1, d2 = store.dataset[var1],  store.dataset[var2]
 
         if t1 == "numeric" and t2 == "numeric":
             fig         = charts.scatter(d1, d2, var1, var2)
-            # Pearson r from clean arrays — mask computed once
-            c1, c2      = store.clean_arrays[var1], store.clean_arrays[var2]
-            mask        = np.isin(np.arange(len(d1)),
-                                  np.where(~(np.isnan(d1) | np.isnan(d2)))[0])
+            # Single boolean mask — no duplicate computation
             mask        = ~(np.isnan(d1) | np.isnan(d2))
             r           = float(np.corrcoef(d1[mask], d2[mask])[0, 1]) if mask.sum() > 1 else 0.0
             stats_panel = ui.correlation_panel(r)
@@ -151,23 +170,12 @@ def register(app):
             badge       = "Categorical × Categorical — Contingency heatmap"
 
         tests = stats.bivariate_test(var1, var2, store.dataset, store.col_meta)
-        return (fig, stats_panel, ui.test_panel(tests),
-                html.Div(badge, style={"fontWeight": "bold", "marginTop": "8px"}))
 
-    # ── Correlation matrix — triggered by upload only ─────────────────────────
-    # Decoupled from var1/var2: the matrix depends only on the dataset,
-    # so it should not re-render every time the user changes a dropdown.
-    @app.callback(
-        [Output("pairwise-correlation",  "figure"),
-         Output("correlation-insights",  "children")],
-        [Input("upload-data", "contents")],
-        prevent_initial_call=True,
-    )
-    def on_corr_matrix(_contents):
-        # get_corr_matrix() returns the cached result computed at upload time
-        mat, cols = store.get_corr_matrix()
-        if mat is not None:
-            return (charts.correlation_heatmap(mat, cols),
-                    ui.correlation_insights_panel(mat, cols))
-        return (charts.empty("Need at least 2 numeric columns"),
-                html.Div("Not enough numeric columns for correlation matrix."))
+        return (
+            fig,
+            stats_panel,
+            ui.test_panel(tests),
+            corr_fig,
+            corr_insights,
+            html.Div(badge, style={"fontWeight": "bold", "marginTop": "8px"}),
+        )
