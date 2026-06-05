@@ -2,8 +2,6 @@
 
 A production-ready Exploratory Data Analysis web application built with **Dash** and **Plotly**. This version adds a full **PCA tab** with six interactive sub-views, fixes critical bugs in the univariate and bivariate tabs, achieves a **13× histogram speed-up**, eliminates all external dependencies that caused crashes (`statsmodels`), and delivers a numpy-first loading pipeline with automatic handling of UTF-16 files and embedded header rows.
 
-EDA app Link : https://huggingface.co/spaces/will-7s/eda_app 
-
 ---
 
 ## ✨ What's New in v5
