@@ -172,8 +172,7 @@ def _rows_to_col_data(rows: list[dict]) -> dict[str, np.ndarray]:
             key_match = any(v == k or v == k.upper() or v == k.lower()
                             for k, v in str_vals.items())
             # Secondary: ALL string values are non-numeric (pure label strings)
-            all_label = all(True for v in str_vals.values()
-                            if not _is_numeric_string(v))
+            all_label = all(not _is_numeric_string(v) for v in str_vals.values())
             if key_match and all_label:
                 rows = rows[1:]
 

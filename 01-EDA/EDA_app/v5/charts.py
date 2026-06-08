@@ -38,7 +38,11 @@ import plotly.express as px
 from utils import drop_nan
 
 _LAYOUT      = dict(template='plotly_white', height=460,
-                    margin=dict(l=44, r=44, t=28, b=44))
+                    margin=dict(l=44, r=44, t=28, b=44),
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    font=dict(family="Inter, -apple-system, sans-serif", size=12),
+                    hoverlabel=dict(font_family="Inter, -apple-system, sans-serif"))
 _SCATTER_MAX = 10_000
 _KDE_GRID    = 512
 _KDE_COMPRESS= 20_000
@@ -51,7 +55,8 @@ _PIE_MAX_CATS= 20      # max slices in pie chart
 def _silverman_bw(c: np.ndarray) -> float:
     n     = len(c)
     sigma = c.std(ddof=1)
-    iqr   = float(np.subtract(*np.percentile(c, [75, 25])))
+    q75, q25 = np.percentile(c, [75, 25])
+    iqr   = float(q75 - q25)
     s     = min(sigma, iqr / 1.34) if iqr > 0 else sigma
     return 0.9 * s * n ** (-0.2)
 
@@ -71,20 +76,14 @@ def _kde_fft(c: np.ndarray, bw: float,
         return None
 
     # ── Linear binning ────────────────────────────────────────────────────────
+    n_grid_eff = n_grid - 1 if len(c) > _KDE_COMPRESS else n_grid
     counts = np.zeros(n_grid)
     span   = hi - lo
-    if len(c) > _KDE_COMPRESS:
-        grid_idx = (c - lo) / span * (n_grid - 1)
-        lo_idx   = np.floor(grid_idx).astype(int).clip(0, n_grid - 2)
-        hi_frac  = grid_idx - lo_idx
-        np.add.at(counts, lo_idx,     1.0 - hi_frac)
-        np.add.at(counts, lo_idx + 1, hi_frac)
-    else:
-        grid_idx = ((c - lo) / span * (n_grid - 1)).clip(0, n_grid - 1)
-        lo_idx   = np.floor(grid_idx).astype(int).clip(0, n_grid - 2)
-        hi_frac  = grid_idx - lo_idx
-        np.add.at(counts, lo_idx,     1.0 - hi_frac)
-        np.add.at(counts, lo_idx + 1, hi_frac)
+    grid_idx = ((c - lo) / span * (n_grid - 1)).clip(0, n_grid_eff)
+    lo_idx   = np.floor(grid_idx).astype(int).clip(0, n_grid - 2)
+    hi_frac  = grid_idx - lo_idx
+    np.add.at(counts, lo_idx,     1.0 - hi_frac)
+    np.add.at(counts, lo_idx + 1, hi_frac)
 
     # ── FFT convolution ───────────────────────────────────────────────────────
     dx     = span / (n_grid - 1)
@@ -322,5 +321,7 @@ def empty(msg: str = 'No data') -> go.Figure:
     fig = go.Figure()
     fig.add_annotation(text=msg, xref='paper', yref='paper',
                        x=0.5, y=0.5, showarrow=False, font_size=14)
-    fig.update_layout(height=400, template='plotly_white')
+    fig.update_layout(height=400, template='plotly_white',
+                      paper_bgcolor='rgba(0,0,0,0)',
+                      font=dict(family="Inter, -apple-system, sans-serif"))
     return fig

@@ -4,142 +4,199 @@ from dash import dcc, html
 import callbacks
 from parsers import SUPPORTED_EXTENSIONS
 
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+app = dash.Dash(
+    __name__,
+    external_stylesheets=[dbc.themes.BOOTSTRAP],
+    suppress_callback_exceptions=True,
+)
 server = app.server
+_ = app.clientside_callback(
+    """
+    function(n_clicks, current) {
+        if (!n_clicks) return 'light';
+        var next = current === 'light' ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('eda-theme', next);
+        return next;
+    }
+    """,
+    dash.Output("theme-store", "data"),
+    dash.Input("theme-toggle", "n_clicks"),
+    dash.State("theme-store", "data"),
+    prevent_initial_call=True,
+)
+_ = app.clientside_callback(
+    """
+    function(data) {
+        var saved = localStorage.getItem('eda-theme') || 'light';
+        document.documentElement.setAttribute('data-theme', saved);
+        return saved;
+    }
+    """,
+    dash.Output("theme-store", "data"),
+    dash.Input("theme-init", "children"),
+)
 _ACCEPTED = ", ".join(f".{e}" for e in sorted(SUPPORTED_EXTENSIONS))
 
-_CARD    = {"border": "1px solid #dee2e6", "borderRadius": "8px",
-            "padding": "16px", "marginTop": "12px", "background": "#ffffff"}
-_SIDEBAR = {"overflowY": "auto", "maxHeight": "82vh"}
+_GRAPH_CFG = {"responsive": True, "displaylogo": False,
+              "modeBarButtonsToRemove": ["lasso2d", "select2d"]}
 
 
 def _pc_dd(id_, label):
     return html.Div([
-        html.Label(label, style={"fontSize": "12px", "fontWeight": "600",
-                                 "color": "#2c3e50", "marginBottom": "2px",
+        html.Label(label, style={"fontSize": "0.75rem", "fontWeight": 600,
+                                 "color": "var(--slate-700)", "marginBottom": 4,
                                  "display": "block"}),
-        dcc.Dropdown(id=id_, clearable=False, style={"fontSize": "12px"}),
-    ], style={"marginBottom": "8px"})
+        dcc.Dropdown(id=id_, clearable=False, style={"fontSize": "0.75rem"}),
+    ], style={"marginBottom": 10})
+
+
+def _loading(children):
+    return dcc.Loading(children=children, type="dot",
+                       color="var(--primary)",
+                       style={"minHeight": 30})
 
 
 app.layout = dbc.Container([
 
-    dbc.Row(dbc.Col([
-        html.H1("Exploratory Data Analysis",
-                className="text-center text-primary mb-2"),
-        html.Hr(),
-    ])),
+    dcc.Store(id="theme-store", data="light"),
+    html.Div(id="theme-init", style={"display": "none"}, children="init"),
+
+    html.Div([
+        html.Div([
+            html.Div([
+                html.H1("Exploratory Data Analysis"),
+                html.Div("Upload a dataset and explore it with interactive visualizations",
+                         className="subtitle"),
+            ], className="header-left"),
+            html.Button(id="theme-toggle", className="theme-toggle-btn",
+                        title="Toggle dark mode"),
+        ], style={"display": "flex", "justifyContent": "space-between",
+                  "alignItems": "center", "width": "100%"}),
+    ], className="app-header"),
 
     dbc.Row(dbc.Col(html.Div([
-        html.H4("Upload a dataset", className="text-center"),
-        html.P(_ACCEPTED, className="text-center text-muted small"),
-        dcc.Upload(
+        html.Div([dcc.Upload(
             id="upload-data",
-            children=html.Div(["Drag & drop or ", html.A("browse a file")]),
-            style={"border": "2px dashed #3498db", "borderRadius": "10px",
-                   "padding": "28px", "textAlign": "center", "cursor": "pointer"},
+            children=html.Div([
+                html.Div("[+]", style={"fontSize": 32, "fontWeight": 300,
+                                       "color": "var(--slate-400)", "marginBottom": 8}),
+                html.Div(["Drag & drop or ", html.A("browse a file")],
+                         style={"fontSize": "0.875rem", "color": "var(--text-secondary)"}),
+                html.Div(_ACCEPTED, style={"fontSize": "0.75rem",
+                                           "color": "var(--text-muted)", "marginTop": 4}),
+            ]),
             accept=_ACCEPTED, multiple=False,
-        ),
-        html.Div(id="upload-status", className="text-center mt-3 fw-semibold"),
-    ], style=_CARD))),
+        )],
+        className="upload-zone"),
+        _loading(html.Div(id="upload-status", className="upload-status")),
+    ], style={"background": "var(--bg-card)", "borderRadius": "var(--radius-lg)",
+              "padding": 24, "boxShadow": "var(--shadow-sm)", "border": "1px solid var(--border)"}))),
 
     html.Div(id="main-content", style={"display": "none"}, children=[
         dbc.Tabs([
-
-            # ── Univariate ────────────────────────────────────────────────────
             dbc.Tab(label="Univariate Analysis", children=[
                 dbc.Row([
                     dbc.Col([
-                        html.H5("Variable", className="mt-3"),
-                        dcc.Dropdown(id="univariate-variable", clearable=False),
-                        html.H5("Chart type", className="mt-3"),
+                        html.H5("Variable", className="mt-3",
+                                style={"fontSize": "0.875rem", "fontWeight": 600}),
+                        dcc.Dropdown(id="univariate-variable", clearable=False,
+                                     style={"fontSize": "0.8125rem"}),
+                        html.H5("Chart type", className="mt-3",
+                                style={"fontSize": "0.875rem", "fontWeight": 600}),
                         dcc.RadioItems(id="plot-type", options=[], value=None,
                                        className="mt-1",
-                                       inputStyle={"marginRight": "6px"}),
-                        html.Hr(className="mt-3 mb-2"),
-                        html.Div(id="univariate-normality",
-                                 style={"overflowY": "auto", "maxHeight": "57vh"}),
+                                       inputStyle={"marginRight": 6}),
+                        html.Hr(className="section-divider"),
+                        _loading(html.Div(id="univariate-normality",
+                                          className="sidebar-scroll")),
                     ], width=3),
                     dbc.Col([
-                        dcc.Graph(id="univariate-plot"),
-                        html.Div(id="univariate-stats", style=_CARD),
+                        _loading(dcc.Graph(id="univariate-plot", config=_GRAPH_CFG)),
+                        _loading(html.Div(id="univariate-stats",
+                                          style={"background": "var(--bg-card)",
+                                                 "border": "1px solid var(--border)",
+                                                 "borderRadius": "var(--radius-lg)",
+                                                 "padding": 20, "marginTop": 16,
+                                                 "boxShadow": "var(--shadow-sm)"})),
                     ], width=9),
                 ], className="mt-3"),
             ]),
-
-            # ── Bivariate ─────────────────────────────────────────────────────
             dbc.Tab(label="Bivariate Analysis", children=[
                 dbc.Row([
                     dbc.Col([
-                        html.H5("Variable 1", className="mt-3"),
-                        dcc.Dropdown(id="bivariate-var1", clearable=False),
-                        html.H5("Variable 2", className="mt-2"),
-                        dcc.Dropdown(id="bivariate-var2", clearable=False),
-                        html.Div(id="bivariate-pair-type", className="mt-2"),
-                        html.Hr(className="mt-3 mb-2"),
-                        html.Div(id="bivariate-tests",
-                                 style={"overflowY": "auto", "maxHeight": "100vh"}),
-                        html.Hr(className="mt-2 mb-2"),
-                        html.Div(id="correlation-insights",
-                                 style={"overflowY": "auto", "maxHeight": "100vh",
-                                        "fontSize": "12px"}),
+                        html.H5("Variable 1", className="mt-3",
+                                style={"fontSize": "0.875rem", "fontWeight": 600}),
+                        dcc.Dropdown(id="bivariate-var1", clearable=False,
+                                     style={"fontSize": "0.8125rem"}),
+                        html.H5("Variable 2", className="mt-2",
+                                style={"fontSize": "0.875rem", "fontWeight": 600}),
+                        dcc.Dropdown(id="bivariate-var2", clearable=False,
+                                     style={"fontSize": "0.8125rem"}),
+                        _loading(html.Div(id="bivariate-pair-type")),
+                        html.Hr(className="section-divider"),
+                        _loading(html.Div(id="bivariate-tests",
+                                          style={"overflowY": "auto",
+                                                 "maxHeight": "100vh"})),
+                        html.Hr(className="section-divider"),
+                        _loading(html.Div(id="correlation-insights",
+                                          style={"overflowY": "auto",
+                                                 "maxHeight": "100vh",
+                                                 "fontSize": "0.75rem"})),
                     ], width=3),
                     dbc.Col([
-                        dcc.Graph(id="bivariate-plot"),
-                        html.Div(id="bivariate-stats", style=_CARD),
+                        _loading(dcc.Graph(id="bivariate-plot", config=_GRAPH_CFG)),
+                        _loading(html.Div(id="bivariate-stats",
+                                          style={"background": "var(--bg-card)",
+                                                 "border": "1px solid var(--border)",
+                                                 "borderRadius": "var(--radius-lg)",
+                                                 "padding": 20, "marginTop": 16,
+                                                 "boxShadow": "var(--shadow-sm)"})),
                         html.Div([
                             html.H5("Pairwise Correlation Matrix",
-                                    className="mt-4 mb-2"),
-                            dcc.Graph(id="pairwise-correlation"),
+                                    className="mt-4 mb-2",
+                                    style={"fontSize": "0.875rem", "fontWeight": 600}),
+                            _loading(dcc.Graph(id="pairwise-correlation", config=_GRAPH_CFG)),
                         ]),
                     ], width=9),
                 ], className="mt-3"),
             ]),
-
-            # ── PCA ───────────────────────────────────────────────────────────
             dbc.Tab(label="PCA", children=[
                 dbc.Row([
-
-                    # Left sidebar
                     dbc.Col([
-                        html.Div(id="pca-summary", style=_SIDEBAR),
-                        html.Hr(style={"margin": "10px 0"}),
-
+                        _loading(html.Div(id="pca-summary",
+                                          className="sidebar-scroll")),
+                        html.Hr(className="section-divider"),
                         _pc_dd("pca-pc-x", "Axis X (horizontal)"),
                         _pc_dd("pca-pc-y", "Axis Y (vertical)"),
-
-                        html.Hr(style={"margin": "8px 0"}),
-
+                        html.Hr(className="section-divider"),
                         html.Label("Axis insight",
-                                   style={"fontSize": "12px", "fontWeight": "600",
-                                          "color": "#2c3e50", "display": "block"}),
+                                   style={"fontSize": "0.75rem", "fontWeight": 600,
+                                          "color": "var(--slate-700)", "display": "block"}),
                         dcc.Dropdown(id="pca-pc-insight", clearable=False,
-                                     style={"fontSize": "12px", "marginTop": "4px",
-                                            "marginBottom": "8px"}),
-
-                        html.Hr(style={"margin": "8px 0"}),
-
+                                     style={"fontSize": "0.75rem", "marginTop": 4,
+                                            "marginBottom": 10}),
+                        html.Hr(className="section-divider"),
                         html.Label("Circle: min cos² filter",
-                                   style={"fontSize": "11px", "color": "#6b7280",
+                                   style={"fontSize": "0.6875rem",
+                                          "color": "var(--text-muted)",
                                           "display": "block"}),
                         dcc.Slider(id="pca-cos2-filter", min=0, max=0.9, step=0.1,
                                    value=0,
                                    marks={i/10: f"{i/10:.1f}" for i in range(0, 10, 2)},
                                    tooltip={"placement": "bottom"}),
-
-                        html.Hr(style={"margin": "8px 0"}),
-
+                        html.Hr(className="section-divider"),
                         html.Label("Individuals: annotate top-n",
-                                   style={"fontSize": "11px", "color": "#6b7280",
+                                   style={"fontSize": "0.6875rem",
+                                          "color": "var(--text-muted)",
                                           "display": "block"}),
                         dcc.Slider(id="pca-top-ind", min=0, max=20, step=5, value=0,
                                    marks={i: str(i) for i in [0, 5, 10, 15, 20]},
                                    tooltip={"placement": "bottom"}),
-
-                        html.Hr(style={"margin": "8px 0"}),
-
+                        html.Hr(className="section-divider"),
                         html.Label("Individuals: colour by",
-                                   style={"fontSize": "11px", "color": "#6b7280",
+                                   style={"fontSize": "0.6875rem",
+                                          "color": "var(--text-muted)",
                                           "display": "block"}),
                         dcc.RadioItems(
                             id="pca-color-by",
@@ -149,53 +206,84 @@ app.layout = dbc.Container([
                                 {"label": " None",            "value": "none"},
                             ],
                             value="cos2",
-                            inputStyle={"marginRight": "4px"},
-                            labelStyle={"display": "block", "fontSize": "11px",
-                                        "color": "#374151", "marginBottom": "2px"},
+                            inputStyle={"marginRight": 4},
+                            labelStyle={"display": "block", "fontSize": "0.6875rem",
+                                        "color": "var(--text-secondary)",
+                                        "marginBottom": 2},
                         ),
-
-                        html.Hr(style={"margin": "8px 0"}),
-                        html.Div(id="pca-axis-insight-panel",
-                                 style={"overflowY": "auto", "maxHeight": "45vh",
-                                        "fontSize": "11px"}),
+                        html.Hr(className="section-divider"),
+                        _loading(html.Div(id="pca-axis-insight-panel",
+                                          style={"overflowY": "auto",
+                                                 "maxHeight": "45vh",
+                                                 "fontSize": "0.6875rem"})),
                     ], width=3),
-
-                    # Right main area — sub-tabs
                     dbc.Col([
                         dbc.Tabs([
                             dbc.Tab(label="Scree plot", children=[
-                                dcc.Graph(id="pca-scree"),
-                                html.Div(id="pca-eigenvalue-table-wrap",
-                                         style=_CARD),
+                                _loading(dcc.Graph(id="pca-scree", config=_GRAPH_CFG)),
+                                _loading(html.Div(id="pca-eigenvalue-table-wrap",
+                                                  style={"background": "var(--bg-card)",
+                                                         "border": "1px solid var(--border)",
+                                                         "borderRadius": "var(--radius-lg)",
+                                                         "padding": 16, "marginTop": 16,
+                                                         "boxShadow": "var(--shadow-sm)"})),
                             ]),
                             dbc.Tab(label="Correlation circle", children=[
-                                dcc.Graph(id="pca-circle"),
-                                html.Div(id="pca-circle-interp", style=_CARD),
+                                _loading(dcc.Graph(id="pca-circle", config=_GRAPH_CFG)),
+                                _loading(html.Div(id="pca-circle-interp",
+                                                  style={"background": "var(--bg-card)",
+                                                         "border": "1px solid var(--border)",
+                                                         "borderRadius": "var(--radius-lg)",
+                                                         "padding": 20, "marginTop": 16,
+                                                         "boxShadow": "var(--shadow-sm)"})),
                             ]),
                             dbc.Tab(label="Biplot", children=[
-                                dcc.Graph(id="pca-biplot"),
-                                html.Div(id="pca-biplot-interp", style=_CARD),
+                                _loading(dcc.Graph(id="pca-biplot", config=_GRAPH_CFG)),
+                                _loading(html.Div(id="pca-biplot-interp",
+                                                  style={"background": "var(--bg-card)",
+                                                         "border": "1px solid var(--border)",
+                                                         "borderRadius": "var(--radius-lg)",
+                                                         "padding": 20, "marginTop": 16,
+                                                         "boxShadow": "var(--shadow-sm)"})),
                             ]),
                             dbc.Tab(label="Individuals", children=[
-                                dcc.Graph(id="pca-individuals"),
-                                html.Div(id="pca-ind-insight-panel", style=_CARD),
-                                html.Div(id="pca-ind-interp", style=_CARD),
+                                _loading(dcc.Graph(id="pca-individuals", config=_GRAPH_CFG)),
+                                _loading(html.Div(id="pca-ind-insight-panel",
+                                                  style={"background": "var(--bg-card)",
+                                                         "border": "1px solid var(--border)",
+                                                         "borderRadius": "var(--radius-lg)",
+                                                         "padding": 20, "marginTop": 16,
+                                                         "boxShadow": "var(--shadow-sm)"})),
+                                _loading(html.Div(id="pca-ind-interp",
+                                                  style={"background": "var(--bg-card)",
+                                                         "border": "1px solid var(--border)",
+                                                         "borderRadius": "var(--radius-lg)",
+                                                         "padding": 20, "marginTop": 16,
+                                                         "boxShadow": "var(--shadow-sm)"})),
                             ]),
                             dbc.Tab(label="Contributions", children=[
-                                dcc.Graph(id="pca-contrib-bar"),
-                                dcc.Graph(id="pca-contrib-heatmap"),
-                                html.Div(id="pca-contrib-interp", style=_CARD),
+                                _loading(dcc.Graph(id="pca-contrib-bar", config=_GRAPH_CFG)),
+                                _loading(dcc.Graph(id="pca-contrib-heatmap", config=_GRAPH_CFG)),
+                                _loading(html.Div(id="pca-contrib-interp",
+                                                  style={"background": "var(--bg-card)",
+                                                         "border": "1px solid var(--border)",
+                                                         "borderRadius": "var(--radius-lg)",
+                                                         "padding": 20, "marginTop": 16,
+                                                         "boxShadow": "var(--shadow-sm)"})),
                             ]),
                             dbc.Tab(label="cos² quality", children=[
-                                dcc.Graph(id="pca-cos2-heatmap"),
-                                html.Div(id="pca-cos2-interp", style=_CARD),
+                                _loading(dcc.Graph(id="pca-cos2-heatmap", config=_GRAPH_CFG)),
+                                _loading(html.Div(id="pca-cos2-interp",
+                                                  style={"background": "var(--bg-card)",
+                                                         "border": "1px solid var(--border)",
+                                                         "borderRadius": "var(--radius-lg)",
+                                                         "padding": 20, "marginTop": 16,
+                                                         "boxShadow": "var(--shadow-sm)"})),
                             ]),
                         ]),
                     ], width=9),
-
                 ], className="mt-3"),
             ]),
-
         ])
     ]),
 

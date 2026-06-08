@@ -139,6 +139,16 @@ def is_loaded() -> bool:
     return bool(dataset)
 
 
+# ── PCA cache accessors ─────────────────────────────────────────────────────────
+
+def get_pca_cache() -> dict | None:
+    return _pca_cache
+
+def set_pca_cache(result: dict | None) -> None:
+    global _pca_cache
+    _pca_cache = result
+
+
 # ── Lilliefors MC cache ───────────────────────────────────────────────────────
 
 def get_lilliefors_mc(n_clean: int) -> np.ndarray:

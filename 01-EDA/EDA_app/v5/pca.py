@@ -3,7 +3,7 @@ pca.py  —  Pure PCA computations. No Dash, no Plotly.
 
 Contributions vs correlations
 ------------------------------
-contrib_var[j,k]  = loading[j,k]² × eigenvalue[k] / sum(eigenvalues) × 100
+contrib_var[j,k]  = loading[j,k]² × 100
                     → how much variable j BUILT axis k  (sums to 100 per PC)
 corr_circle[j,k]  = loading[j,k] × sqrt(eigenvalue[k])
                     → Pearson correlation of original variable j with score k
@@ -56,9 +56,9 @@ def run_pca(dataset: dict, col_meta: dict, col_stats: dict) -> dict | None:
     else:
         elbow = 1
     thresh_70 = int(np.searchsorted(cumulative, 0.70) + 1)
-    n_optimal = max(2, min(int(np.median(sorted([kaiser, elbow, thresh_70]))), n_comp))
+    n_optimal = max(2, min(int(np.median([kaiser, elbow, thresh_70])), n_comp))
 
-    contributions_var = (loadings**2 * eigenvalues) / eigenvalues.sum() * 100
+    contributions_var = loadings**2 * 100
     corr_circle       = loadings * np.sqrt(eigenvalues)
     cos2_var          = corr_circle**2
     contributions_ind = (scores**2) / (n_obs * eigenvalues) * 100

@@ -12,7 +12,10 @@ _LAYOUT = dict(
     template="plotly_white",
     height=460,
     margin=dict(l=50, r=50, t=40, b=50),
-    font=dict(family="sans-serif", size=12),
+    paper_bgcolor="rgba(0,0,0,0)",
+    plot_bgcolor="rgba(0,0,0,0)",
+    font=dict(family="Inter, -apple-system, sans-serif", size=12),
+    hoverlabel=dict(font_family="Inter, -apple-system, sans-serif"),
 )
 
 _BLUE   = "#3498db"
@@ -116,6 +119,8 @@ def eigenvalue_table(result: dict) -> go.Figure:
     fig.update_layout(
         height=max(250, n * 26 + 80),
         margin=dict(l=20, r=20, t=30, b=20),
+        paper_bgcolor="rgba(0,0,0,0)",
+        font=dict(family="Inter, -apple-system, sans-serif", size=12),
         title=dict(text="Eigenvalue table", font_size=13),
     )
     return fig
@@ -399,10 +404,7 @@ def contributions_bar(result: dict, pc_idx: int) -> go.Figure:
     )
     h = max(300, len(variables) * 28 + 80)
     fig.update_layout(
-        template="plotly_white",
-        height=h,
-        margin=dict(l=120, r=60, t=50, b=50),
-        font=dict(family="sans-serif", size=12),
+        **_layout(height=h, margin=dict(l=120, r=60, t=50, b=50)),
         title=dict(text=f"Variable contributions — PC{pc_idx+1} ({exp:.1f}%)", font_size=13),
         xaxis_title="Contribution (%)",
         yaxis_title="",
@@ -427,13 +429,10 @@ def cos2_heatmap(result: dict, n_pc: int = 5) -> go.Figure:
     )
     h = max(300, len(variables) * 30 + 100)
     fig.update_layout(
-        template="plotly_white",
-        height=h,
-        margin=dict(l=130, r=50, t=50, b=80),
-        font=dict(family="sans-serif", size=12),
+        **_layout(height=h, margin=dict(l=130, r=50, t=50, b=80)),
         title=dict(text="Quality of representation (cos²) — variables × PCs", font_size=13),
     )
-    fig.update_traces(textfont_size=9)
+    fig.data[0].update(textfont=dict(size=9))
     return fig
 
 
@@ -454,13 +453,10 @@ def contributions_heatmap(result: dict, n_pc: int = 5) -> go.Figure:
     )
     h = max(300, len(variables) * 30 + 100)
     fig.update_layout(
-        template="plotly_white",
-        height=h,
-        margin=dict(l=130, r=50, t=50, b=80),
-        font=dict(family="sans-serif", size=12),
+        **_layout(height=h, margin=dict(l=130, r=50, t=50, b=80)),
         title=dict(text="Variable contributions (%) — variables × PCs", font_size=13),
     )
-    fig.update_traces(textfont_size=9)
+    fig.data[0].update(textfont=dict(size=9))
     return fig
 
 
@@ -473,5 +469,7 @@ def empty_pca(msg: str = "Upload a dataset with at least 2 numeric columns.") ->
         x=0.5, y=0.5, showarrow=False,
         font=dict(size=13, color="#7f8c8d"),
     )
-    fig.update_layout(height=300, template="plotly_white")
+    fig.update_layout(height=300, template="plotly_white",
+                      paper_bgcolor="rgba(0,0,0,0)",
+                      font=dict(family="Inter, -apple-system, sans-serif", size=12))
     return fig

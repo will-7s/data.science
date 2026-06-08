@@ -1,60 +1,117 @@
 # EDA Dashboard Application — v5
 
-A production-ready Exploratory Data Analysis web application built with **Dash** and **Plotly**. This version adds a full **PCA tab** with six interactive sub-views, fixes critical bugs in the univariate and bivariate tabs, achieves a **13× histogram speed-up**, eliminates all external dependencies that caused crashes (`statsmodels`), and delivers a numpy-first loading pipeline with automatic handling of UTF-16 files and embedded header rows.
+A production-ready Exploratory Data Analysis web application built with **Dash** and **Plotly**. This version adds a full **PCA tab** with six interactive sub-views and expert interpretation panels, a **dark mode** theme system with persistent preferences, fixes critical performance and correctness bugs in the univariate and bivariate tabs, and delivers a deployment-optimised callback architecture with immediate visual feedback.
 
 ---
 
 ## ✨ What's New in v5
 
-### New: PCA Tab
+### Dark mode theme system
 
 | Feature | Description |
 |---|---|
-| **Scree plot** | Individual variance % (bars) + cumulative % (line) + optimal PC recommendation (vertical line) + 70% threshold (horizontal line) |
-| **Eigenvalue table** | Full table: eigenvalue, variance %, cumulative %, keep/discard recommendation |
-| **Correlation circle** | Variable arrows in unit circle, interactive cos² filter slider, colour-coded by variable |
-| **Biplot** | Individuals (scaled) + variable arrows overlaid in one view |
-| **Individuals plane** | Score scatter coloured by cos² or contribution; top-n annotation slider |
-| **Contributions** | Horizontal bar chart per axis (uniform threshold line) + multi-axis heatmap |
+| **CSS custom properties** | Full design token system (`--text-primary`, `--bg-card`, `--primary`, etc.) — both themes defined in one stylesheet |
+| **Clientside toggle** | Sun/moon button toggles `data-theme` attribute on `<html>` — no server round-trip |
+| **localStorage persistence** | Theme choice saved across page reloads |
+| **Automatic chart theming** | Plotly text/grid colours inherit CSS variables via `.js-plotly-plot` selectors — no template switching needed |
+| **Glass-morphism cards** | `backdrop-filter: blur(12px)` cards in dark mode, subtle gradient backgrounds in both themes |
+| **Smooth transitions** | Theme switch animates via `transition: background var(--transition-slow), color var(--transition-slow)` |
+
+### New module: PCA tab
+
+| Feature | Description |
+|---|---|
+| **6 sub-tabs** | Scree plot, Correlation circle, Biplot, Individuals plane, Contributions, cos² quality |
+| **Scree plot** | Variance bars + cumulative curve + recommended PC count (vertical line) + 70% threshold |
+| **Eigenvalue table** | λ, variance %, cumulative %, keep/discard per PC |
+| **Correlation circle** | Variable arrows in unit circle, interactive cos² filter slider |
+| **Biplot** | Individuals (rescaled) + variable arrows in one view |
+| **Individuals plane** | Score scatter, colourable by cos² or contribution, top-n annotation slider |
+| **Contributions** | Bar chart per axis (uniform threshold line) + multi-axis heatmap |
 | **cos² quality** | Variable × PC heatmap of representation quality |
-| **Expert interpretation panels** | Dynamic data-driven commentary under every sub-tab (circle, biplot, individuals, contributions, cos²) |
-| **Axis insight sidebar** | Per-PC breakdown: contribution, cos², correlation, direction for every variable |
-| **Optimal PC recommendation** | Majority vote of Kaiser (λ>1), scree elbow (max 2nd derivative), 70% variance threshold |
-| **Distinction contrib vs corr** | Explicitly documented and displayed separately throughout |
-| **PCA cache** | Computed once at upload (`store._pca_cache`), all PCA callbacks are O(1) cache reads |
-| **StandardScaler** | All numeric variables centred and scaled before PCA — avoids size/unit effects |
+| **5 expert interpretation panels** | Dynamic data-driven commentary under circle, biplot, individuals, contributions, cos² |
+| **Axis insight sidebar** | Per-PC breakdown: contribution, cos², correlation, direction per variable |
+| **Distinction contrib vs corr** | Explicitly computed and displayed separately throughout |
+| **PCA cache** | Computed once at upload → all PCA callbacks are O(1) reads |
+| **StandardScaler** | Variables centred and scaled before PCA — no size/unit effects |
+| **Optimal PC recommendation** | Majority vote of Kaiser (λ>1), scree elbow, 70% threshold |
+| **New modules** | `pca.py`, `charts_pca.py`, `ui_pca.py` |
+
+---
 
 ### Bug fixes — Univariate and Bivariate tabs
 
 | Bug | v4 | v5 |
 |---|---|---|
-| **Histogram crash on constant column** | `bw=0` → divide-by-zero in KDE → blank chart | `bw=0` guard → falls back to plain bar chart |
-| **Scatter crash** | `trendline='ols'` required `statsmodels` (not installed) → `ModuleNotFoundError` | Replaced by `np.polyfit` manual OLS — no extra dependency |
-| **Integer columns classified as categorical** | `store.py` only checked `dtype.kind == 'f'`; `int64`/`uint8` from `parsers.py` v5 were silently treated as categorical | Full dtype coverage: `int8/16/32/64`, `uint8/16/32/64` all handled as numeric |
-| **Embedded header row in JSON** | First data row treated as data → all numeric columns read as strings | `_is_numeric_string` + key-match detection strips the header row automatically |
-| **Charts render on startup** | Univariate/bivariate callbacks fired immediately on load (before data available) → empty/error renders | `prevent_initial_call=True` on all three callbacks |
-| **`make_subplots` overhead** | Used for histogram dual-axis → +8 ms per render | Replaced by `yaxis2=dict(overlaying='y')` in single `go.Figure` |
-| **Raw `go.Histogram` payload** | Sent all n raw data points to client | Pre-binned with `np.histogram` → sends 50 points regardless of n |
-| **`px.scatter` OLS import latency** | `statsmodels` imported on every scatter call (even if available) | Single `go.Scattergl` + manual polyfit — faster and dependency-free |
-| **`grouped_boxplot` Python loop** | `for c in np.unique(cat)` + boolean mask per group — O(k×n) | `np.argsort` + `np.split` vectorised groupby — O(n log n) |
-| **`bar_categorical` unreadable** | No cap on categories — 200+ categories produced unreadable chart | Capped at 50; remainder aggregated into "(N others)" bar |
-| **`pie_categorical` browser freeze** | No cap on slices | Capped at 20; remainder → "Other" slice |
-| **`correlation_heatmap` text overflow** | `text_auto='.2f'` on large matrices made labels unreadable | Disabled above 15×15 |
-| **`heatmap_categorical` text overflow** | `text_auto='.1f'` unconditional | Disabled above 20×20 (k×r > 400) |
+| **Histogram crash on constant column** | `bw=0` → divide-by-zero in KDE → blank chart | Guard added: falls back to plain bar chart |
+| **Scatter crash (missing statsmodels)** | `trendline='ols'` required `statsmodels` → `ModuleNotFoundError` | Replaced by `np.polyfit` OLS — zero extra dependency |
+| **Integer columns misclassified** | `store.py` only checked `dtype.kind == 'f'`; `int64`/`uint8` from parser treated as categorical | Full dtype coverage: `int8/16/32/64`, `uint8/16/32/64` all handled as numeric |
+| **Embedded header row in JSON** | First data row treated as data → numeric columns read as strings | `_is_numeric_string` + key-match detection strips header automatically |
+| **Charts render on startup** | Callbacks fired on load before data → empty/error renders visible | `prevent_initial_call=True` on all interaction callbacks |
+| **`make_subplots` overhead** | Histogram used `make_subplots` for dual-axis → +8 ms per call | Replaced by `yaxis2=dict(overlaying='y')` in single `go.Figure` |
+| **Raw `go.Histogram` payload** | Sent all n raw values to client | Pre-binned with `np.histogram` → 50 points sent regardless of n |
+| **Scatter OLS import latency** | `statsmodels` imported per call | `go.Scattergl` + `np.polyfit` — no import |
+| **`grouped_boxplot` Python loop** | `for c in np.unique(cat)` + mask per group — O(k×n) | `np.argsort` + `np.split` vectorised groupby — O(n log n) |
+| **`bar_categorical` unreadable** | No category cap | Capped at 50; rest → "(N others)" |
+| **`pie_categorical` browser freeze** | No slice cap | Capped at 20; rest → "Other" |
+| **`correlation_heatmap` text** | `text_auto` always on | Disabled above 15×15 |
+| **`heatmap_categorical` text** | `text_auto` always on | Disabled above 20×20 |
+| **`anderson` FutureWarning** | `method='interpolate'` triggered FutureWarning on scipy ≥ 1.17 | `try/except (TypeError, AttributeError)` handles both old and new scipy |
+
+---
 
 ### Performance improvements
 
 | Operation | v4 | v5 | Gain |
 |---|---|---|---|
 | **Histogram** | ~182 ms | ~14 ms | **13×** |
-| **Scatter** | crashed | ~13 ms | fixed |
-| **Boxplot** | ~12 ms | ~11 ms | 1.1× |
-| **bar_categorical** | ~13 ms | ~13 ms | — |
-| **JSON load (15k rows, UTF-16)** | ~810 ms (v3 baseline) | ~315 ms | **2.6×** |
-| **CSV load (1.6k rows)** | ~15 ms | ~5 ms | **3×** |
+| **Scatter** | crash | ~14 ms | fixed |
+| **Normality battery n=50k** | ~104 ms | ~60 ms | **1.7×** |
+| **Subsampling setup (n=50k, K=10)** | ~95 ms (K=20 argsort each) | ~5 ms (one argsort) | **19×** |
+| **JSON load 15k rows UTF-16** | ~810 ms (v3 baseline) | ~315 ms | **2.6×** |
+| **CSV load 1.6k rows** | ~15 ms | ~5 ms | **3×** |
 | **Deduplication mixed** | O(n) Python loop | O(n log n) numpy void | 3–5× |
 | **Correlation matrix per bivariate call** | O(p²·n) recomputed | O(1) cache | — |
-| **PCA all sub-tab interactions** | n/a | O(1) cache reads | — |
+| **PCA all interactions** | n/a | O(1) cache | — |
+| **NaN strip per callback** | O(n) re-scan | O(1) from `clean_arrays` | — |
+| **`grouped_boxplot`** | O(k×n) Python loop | O(n log n) vectorised | — |
+
+---
+
+### Deployment architecture — split callbacks
+
+The most impactful change for perceived latency is the **callback split**:
+
+| v4 | v5 |
+|---|---|
+| `on_univariate` — chart + stats + normality in one callback | **`on_univariate_chart`** — figure only (~14 ms) fires first |
+| User waits for normality tests before seeing anything | **`on_univariate_stats`** — stats + normality (~7 ms small, ~60 ms large n) fires in parallel |
+| `on_bivariate` — chart + tests + matrix in one callback | **`on_bivariate_chart`** — chart + correlation matrix (~15 ms) fires first |
+| User waits for all statistical tests before seeing plot | **`on_bivariate_stats`** — tests + insights (~4–50 ms) fires in parallel |
+
+**`dcc.Loading` wrappers** added around every heavy output so users see a spinner immediately rather than a frozen interface.
+
+**Global chart config** (`_GRAPH_CFG`): `responsive=True`, `displaylogo=False`, `modeBarButtonsToRemove=["lasso2d", "select2d"]` on all `dcc.Graph` components.
+
+---
+
+### Visual design system
+
+| Token | Light mode | Dark mode | Purpose |
+|---|---|---|---|
+| `--text-primary` | `#0f172a` | `#e2e8f0` | Headings, body text |
+| `--text-secondary` | `#475569` | `#94a3b8` | Labels, notes |
+| `--text-muted` | `#64748b` | `#94a3b8` | Metadata, secondary info |
+| `--bg-body` | `#f5f3ff` | `#0c0e19` | Page background |
+| `--bg-card` | `#ffffff` | `#161827` | Card backgrounds |
+| `--primary` | `#6366f1` | `#818cf8` | Accent (indigo) |
+| `--header-from` → `--header-to` | `#1e1b4b` → `#312e81` | `#080a14` → `#0f111e` | Header gradient |
+
+- **Typography**: Inter (UI) + JetBrains Mono (data) via Google Fonts
+- **Animations**: `fadeIn` (200ms), `slideIn` (300ms), `gradient-shift` (8s infinite) on header
+- **Glass effect**: `backdrop-filter: blur(8–12px)` on cards and theme toggle in dark mode
+- **Responsive breakpoints**: 1200px (reading grid collapse), 768px (header stack)
+- **Custom scrollbar**: Thin (6px), colour-matching theme
 
 ---
 
@@ -66,162 +123,141 @@ A production-ready Exploratory Data Analysis web application built with **Dash**
 | **State management** | `store.py` |
 | **Data loading** | `loader.py` + `parsers.py` |
 | **Business logic** | `stats.py` |
-| **Visualization** | `charts.py` + `charts_pca.py` |
+| **Visualisation** | `charts.py` + `charts_pca.py` |
 | **UI components** | `ui.py` + `ui_pca.py` |
 | **PCA computations** | `pca.py` |
 | **Orchestration** | `callbacks.py` |
 | **Utilities** | `utils.py` |
+| **Styling** | `assets/style.css` |
 
 ---
 
 ## 📁 File Descriptions
 
 ### `eda_app.py`
-Application entry point. Defines layout: upload card, Univariate tab, Bivariate tab, PCA tab (with 6 sub-tabs and a full sidebar of controls). Exposes `server` for WSGI deployment.
+Application entry point. Defines layout with `dcc.Loading` wrappers on every output. PCA tab with 6 sub-tabs and full sidebar. **Dark mode clientside callbacks**: toggle (click → `data-theme` attribute + `localStorage`) and init (restore from `localStorage` on load). Exposes `server` for WSGI deployment.
 
 ### `callbacks.py`
-Orchestration layer. All callbacks:
+Orchestration layer. **8 callbacks** total:
 
-- **`on_upload`** — decodes upload, populates all dropdowns (univariate, bivariate, all PCA axes), runs PCA and caches the result.
-- **`on_variable_changed`** — updates plot-type radio options (`prevent_initial_call=True`).
-- **`on_univariate`** — histogram/boxplot/bar/pie + stats + normality battery (`prevent_initial_call=True`). Reads from `store.clean_arrays`.
-- **`on_bivariate`** — scatter/grouped box/contingency heatmap + correlation matrix O(1) cache (`prevent_initial_call=True`).
-- **7 PCA callbacks** — all O(1) cache reads from `store._pca_cache`:
-  - `on_pca_summary`, `on_pca_scree`, `on_pca_circle`, `on_pca_biplot`, `on_pca_individuals`, `on_pca_axis_insight`, `on_pca_contributions`, `on_pca_cos2`.
+- **`on_upload`** — decodes upload, resets store, runs PCA once, populates all dropdowns.
+- **`on_variable_changed`** — updates plot-type options (`prevent_initial_call=True`).
+- **`on_univariate_chart`** — chart only, ~14 ms, fires first (`prevent_initial_call=True`).
+- **`on_univariate_stats`** — stats + normality battery, fires in parallel (`prevent_initial_call=True`).
+- **`on_bivariate_chart`** — chart + correlation matrix O(1) cache, ~15 ms (`prevent_initial_call=True`).
+- **`on_bivariate_stats`** — statistical tests + insights, fires in parallel (`prevent_initial_call=True`).
+- **7 PCA callbacks** — all O(1) reads from `store._pca_cache`.
 
 ### `store.py`
-Single source of truth. All caches invalidated on upload.
+Single source of truth. Full dtype coverage for column classification.
 
-**Column classification (v5 — full dtype coverage):**
+**Classification rules (in order):**
 
 | dtype kind | Rule | Result |
 |---|---|---|
 | `U`, `S`, `O` (string/object) | Always | categorical |
 | `b` (bool) | Always | categorical |
-| `i`, `u` (int8…int64, uint8…uint64) | n_uniq ≤ 10 AND n_uniq < 0.5×n | categorical |
+| `i`, `u` (int8…uint64) | n_uniq ≤ 10 **and** n_uniq < 0.5×n | categorical |
 | `i`, `u` | otherwise | **numeric** ← v5 fix |
 | `f` (float64) | ≤ 10 distinct integer values | categorical |
 | `f` | otherwise | numeric |
 
-Integer-coded categorical columns (e.g. `quality = 5`) are converted to string for display.
-
-**Caches:**
-- `clean_arrays` — NaN-stripped float64, pre-computed at reset, O(1) per callback.
+**Caches** (all invalidated on each upload):
+- `clean_arrays` — NaN-stripped float64, pre-computed at reset.
 - `col_stats` — `{n_clean, n_nan}` per column.
-- `_corr_matrix_cache` — pairwise Pearson (p × p), computed once.
+- `_corr_matrix_cache` — pairwise Pearson (p×p), computed once.
 - `_pca_cache` — full PCA result dict, computed once.
 - `_lilliefors_cache` — MC null distributions, lazy per unique n.
 
 ### `loader.py`
-Decodes base64 uploads → parser → column alignment → numpy deduplication → `store.reset()`.
+Base64 decode → parser → column alignment → numpy deduplication → `store.reset()`.
 
 **Deduplication** — pure numpy void-view + `np.unique`, O(n log n):
-- Float columns: `(value, nan_flag_uint8)` pairs so NaN rows compare equal.
-- String columns: fixed-width numpy string fields.
-- Original row order preserved by `np.sort(idx)` after `np.unique`.
+- Float: `(value, nan_flag_uint8)` pairs — NaN rows hash consistently.
+- String: fixed-width numpy fields.
 
-**Column alignment** — `np.unique` with `return_counts` finds the majority length; outlier columns dropped with a user-visible warning.
+**Column alignment** — `np.unique` with `return_counts` finds majority length; outlier columns dropped with user-visible warning.
 
 ### `parsers.py`
-Numpy-first parsing pipeline.
+Numpy-first parsing pipeline. Phase 1: raw bytes → Python objects (orjson / csv / pandas read_excel / pyarrow). Phase 2: Python objects → numpy arrays — no Python per-cell loop.
 
-**Phase 1 — Raw bytes → Python objects:**
-- JSON/JSONL: `orjson` (Rust C-extension, 3–5× faster than stdlib `json`).
-- Encoding: `_to_utf8()` detects UTF-32/UTF-16/UTF-8-BOM via BOM bytes and transcodes in one C codec call.
-- CSV: stdlib `csv` C reader.
-- Excel/ODS: `pd.read_excel` (unavoidable — only reliable cross-format Excel parser).
-- Parquet: `pyarrow` → numpy directly, no pandas.
+**Embedded header row detection** — strips rows where string values match their column key (datasud.fr, Opendatasoft exports).
 
-**Phase 2 — Python objects → numpy arrays (`_infer_numpy_col`):**
-- None mask via `np.equal(arr, None)` — vectorised, no Python loop.
-- Numeric fast path: checks `isinstance(first_non_null, (int, float))` → single `astype(float64)` call.
-- String path: tries `astype(float64)` on string array; falls back to str with `None → ''`.
-- No Python per-cell loop anywhere.
+**Encoding support** — UTF-8, UTF-16 LE/BE, UTF-32 LE/BE via BOM detection + C codec transcoding.
 
-**Embedded header row detection (v5 fix):**
-- Detects rows where string values match their column key (e.g. `{"ANNEE": "ANNEE", "CONSO": "CONSOA"}`).
-- `_is_numeric_string()` helper distinguishes label strings from numeric strings.
-- Handles formats from datasud.fr, Opendatasoft, and other French open-data portals.
+**Formats** — CSV, TSV, TXT, JSON, JSONL, XLSX, XLSM, XLS, ODS, Parquet.
 
-**Supported formats:** CSV, TSV, TXT, JSON, JSONL, XLSX, XLSM, XLS, ODS, Parquet.
-
-**Recognised JSON structures:** list of objects, column dict, Opendatasoft `values`/`results`/`records` wrappers.
+**JSON structures** — list of objects, column dict, Opendatasoft `values`/`results`/`records`.
 
 ### `stats.py`
 Pure statistical functions. No Dash, Plotly, or pandas.
 
-**Normality battery (5 tests)** with large-sample stratified subsampling (n > 5 000):
-1. Draw 20 stratified subsamples of 2 000 observations (quantile bins, vectorised).
-2. Run all 5 tests on each subsample.
-3. Aggregate via `np.nanmedian` over (20 × 5) matrix.
-4. `is_normal` by majority vote. Skewness/kurtosis always on full array.
+**Optimised large-n subsampling (`_subsample_matrix`):**
+```
+v4: K separate calls to _stratified_subsample(arr)
+    = K × argsort(n)  → 20 × 4.8ms = 96ms just for setup
 
-| Test | Min n | Notes |
-|---|---|---|
-| Shapiro-Wilk | 3 | Most powerful for n ≤ 5 000 |
-| Kolmogorov-Smirnov | 3 | Conservative |
-| Anderson-Darling | 7 | Emphasises tails; `method='interpolate'` when available |
-| Lilliefors | 4 | MC cache from `store`; corrects KS for estimated parameters |
-| D'Agostino-Pearson | 8 | Omnibus K² = Z²(skew) + Z²(kurt) ~ χ²(2) |
+v5: _subsample_matrix(arr, K, n_each)
+    = 1 × argsort(n) + vectorised matrix indexing
+    → 5ms total regardless of K
+    → 19× faster setup
+```
+`_SUBSAMPLE_REPS` reduced from 20 to 10. Statistical impact: median p-value stability decreases by √2 — negligible for α=0.05 decisions (validated empirically).
+
+**`anderson_darling`** — `try/except (TypeError, AttributeError)` handles both scipy ≥ 1.17 (`method='interpolate'` with `.pvalue`) and older scipy (5% critical value fallback).
+
+**Normality battery (5 tests):** Shapiro-Wilk, KS, Anderson-Darling, Lilliefors (MC cached), D'Agostino-Pearson. Subsampling active for n > 5 000.
 
 **Bivariate tests:**
 
 | Pair type | Tests | Effect sizes |
 |---|---|---|
 | Num × Num | Pearson r, Spearman ρ, Kendall τ | r, ρ, τ |
-| Num × Cat | Levene, ANOVA, Kruskal-Wallis; k=2: Student t, Welch t, Z-test, Mann-Whitney U, Wilcoxon | η² |
+| Num × Cat | Levene, ANOVA, Kruskal-Wallis; k=2: t-Student, t-Welch, Z-test, Mann-Whitney U, Wilcoxon | η² |
 | Cat × Cat | Chi-square, Fisher's Exact (k×r) | Cramér's V, Tschuprow's T |
 
 ### `charts.py`
-Plotly figure factories. All v5 fixes applied.
+Plotly figure factories.
 
-**`histogram`:** `np.histogram` pre-bins data (50 points sent to client, not n). Single `go.Figure` with `yaxis2` overlay (no `make_subplots`). KDE scaled to count axis. `bw=0` guard for constant columns.
-
-**`scatter`:** `go.Scattergl` (WebGL, faster for > 1 000 points). Manual `np.polyfit` OLS trendline with R² label — no `statsmodels`.
-
-**`bar_categorical`:** capped at 50 categories; remainder → "(N others)". `xaxis_tickangle=-30` for many categories.
-
-**`pie_categorical`:** capped at 20 slices; remainder → "Other".
-
-**`grouped_boxplot`:** vectorised groupby — `np.argsort(cat_codes)` + `np.split` — O(n log n), no Python loop per group.
-
-**`heatmap_categorical`:** `text_auto` disabled above 20×20.
-
-**`correlation_heatmap`:** `text_auto` disabled above 15×15.
-
-### `charts_pca.py`
-Plotly factories for the PCA tab: `scree_plot`, `eigenvalue_table`, `correlation_circle`, `biplot`, `individuals_plane`, `contributions_bar`, `cos2_heatmap`, `contributions_heatmap`, `empty_pca`. All use `_layout()` helper to avoid duplicate key errors in `update_layout`.
+- **`histogram`** — `np.histogram` pre-bins (50 points to client), no `make_subplots`, KDE scaled to count axis, `bw=0` guard.
+- **`scatter`** — `go.Scattergl` (WebGL), `np.polyfit` OLS with R², no statsmodels.
+- **`bar_categorical`** — capped at 50 categories.
+- **`pie_categorical`** — capped at 20 slices.
+- **`grouped_boxplot`** — `np.argsort + np.split` vectorised groupby.
+- **`heatmap_categorical`** — `text_auto` off above 20×20.
+- **`correlation_heatmap`** — `text_auto` off above 15×15.
 
 ### `pca.py`
-Pure PCA computations. `sklearn.PCA` + `StandardScaler` for numerical stability. No Dash, no Plotly.
+Pure PCA. `sklearn.PCA` + `StandardScaler`. All quantities vectorised numpy:
 
-**Computed quantities (all vectorised numpy):**
-
-| Quantity | Formula | Interpretation |
+| Quantity | Formula | Meaning |
 |---|---|---|
-| `corr_circle[j,k]` | `loading[j,k] × √λ_k` | Pearson correlation of variable j with axis k |
-| `cos2_var[j,k]` | `corr_circle[j,k]²` | Proportion of variable j's variance explained by axis k |
-| `contributions_var[j,k]` | `loading[j,k]² × λ_k / Σλ × 100` | % of axis k's variance built by variable j (Σ=100 per axis) |
-| `contributions_ind[i,k]` | `score[i,k]² / (n × λ_k) × 100` | % of axis k's variance built by individual i |
-| `cos2_ind[i,k]` | `score[i,k]² / Σ_k score[i,k]²` | Quality of representation of individual i on axis k |
+| `corr_circle[j,k]` | `loading[j,k] × √λ_k` | Pearson corr. of variable j with axis k |
+| `cos2_var[j,k]` | `corr_circle²` | Proportion of variable j's variance on axis k |
+| `contributions_var[j,k]` | `loading²×λ_k / Σλ × 100` | % of axis k built by variable j (Σ=100 per axis) |
+| `contributions_ind[i,k]` | `score²/(n×λ_k) × 100` | % of axis k built by individual i |
+| `cos2_ind[i,k]` | `score²/Σscore²` | Quality of representation of individual i on axis k |
 
-**Optimal PC count:** majority vote of Kaiser (λ>1), scree elbow (max 2nd difference of explained variance), 70% cumulative variance threshold. Result: `max(2, min(vote, n_components))`.
+### `charts_pca.py`
+Plotly factories for PCA: scree, eigenvalue table, correlation circle, biplot, individuals plane, contributions bar, cos² heatmap, contributions heatmap. All use `_layout()` helper to avoid duplicate-key errors. Configurable cos² filter slider, top-n annotation, colour-by modes.
 
 ### `ui_pca.py`
-Pure `(data → Dash HTML component)` factories. Six expert interpretation panels:
-
-- **`circle_interpretation_panel`** — axis polarity table, HHI concentration index, correlated/opposed pair detection, misleading-arrow warnings.
-- **`biplot_interpretation_panel`** — dual-scale reading guide, top variables per axis, professional cautions.
-- **`individuals_interpretation_panel`** — cloud statistics, quadrant table, top-5 contributors, cos² quality summary.
-- **`contributions_interpretation_panel`** — HHI concentration, axis polarity, redundancy detection, R² cumulative per variable, FactoMineR integration rules.
-- **`cos2_interpretation_panel`** — per-variable quality table, per-axis coverage, escaped variables, misleading arrows, FactoMineR heatmap reading protocol.
-- **`axis_insight_panel`** — per-variable cards: contribution vs threshold, cos², correlation, direction.
+Six expert interpretation panels:
+- `circle_interpretation_panel` — axis polarity, HHI concentration, correlated/opposed pairs, misleading arrows.
+- `biplot_interpretation_panel` — dual-scale reading guide, top variables per axis.
+- `individuals_interpretation_panel` — cloud stats, quadrant table, top-5 contributors.
+- `contributions_interpretation_panel` — HHI, axis polarity, redundancy detection, R² cumulative.
+- `cos2_interpretation_panel` — quality table, per-axis coverage, escaped variables, FactoMineR protocol.
+- `axis_insight_panel` — per-variable cards: contribution vs threshold, cos², correlation, direction.
 
 ### `ui.py`
-Pure `(data → Dash HTML component)` factories for univariate and bivariate tabs.
+Pure `(data → Dash HTML component)` factories for univariate/bivariate tabs.
 
 ### `utils.py`
-Pure numpy helpers. No Dash, Plotly, or scipy.
+Pure numpy helpers: `drop_nan`, `is_integer_array` (modulo-based, 3× faster than round), `format_percent`.
+
+### `assets/style.css`
+Single stylesheet with 943 lines. Design token system via CSS custom properties (`:root` for light, `[data-theme="dark"]` for dark). Includes animations, scrollbar, responsive breakpoints, Plotly chart overrides, glass-morphism effects, and custom component styles (upload zone, stat cards, tip boxes, tables, sliders, tabs, dropdowns).
 
 ---
 
@@ -229,38 +265,16 @@ Pure numpy helpers. No Dash, Plotly, or scipy.
 
 | Operation | v3 | v4 | v5 |
 |---|---|---|---|
-| Histogram render | ~180 ms | ~180 ms | **~14 ms** (13×) |
-| Scatter render | n/a (crash) | n/a (crash) | **~13 ms** |
-| JSON load — 15k rows UTF-16 | ~810 ms | ~330 ms | **~315 ms** |
-| CSV load — 1.6k rows | ~15 ms | ~6 ms | **~5 ms** |
-| Deduplication mixed | O(n) Python | O(n log n) numpy | — |
-| Correlation matrix per interaction | O(p²n) | O(1) | O(1) |
-| PCA all interactions | n/a | n/a | O(1) |
-| NaN strip per callback | O(n) | O(1) | O(1) |
-| Lilliefors first call (per n) | n/a | ~20 ms | ~20 ms |
-| Lilliefors subsequent calls | n/a | <1 ms | <1 ms |
-
----
-
-## 📊 Statistical Tests Reference
-
-### Normality Battery (Univariate tab sidebar)
-Colour-coded banner (green/amber/red). Subsampling banner when n > 5 000. Skewness + excess kurtosis always on full array.
-
-### Bivariate Test Reports (Bivariate tab sidebar)
-**Num × Num:** Pearson/Spearman/Kendall with p-values. Per-variable normality check. Recommendation adapts to normality and n.
-
-**Num × Cat:** Group normality (Shapiro-Wilk, subsampled for large groups). Levene, ANOVA, Kruskal-Wallis for any k. For k=2: Student t, Welch t, Z-test (n>60), Mann-Whitney U, Wilcoxon (equal sizes). Recommendation adapts to normality and homogeneity.
-
-**Cat × Cat:** Chi-square with expected-cell diagnostics. Fisher's Exact (generalised k×r). Cramér's V + Tschuprow's T with strength labels.
-
-### Cramér's V Strength Thresholds
-
-| min(k,r) − 1 | Small | Medium | Large |
-|---|---|---|---|
-| 1 | 0.10 | 0.30 | 0.50 |
-| 2 | 0.07 | 0.21 | 0.35 |
-| 3 | 0.06 | 0.17 | 0.29 |
+| Histogram render | ~180 ms | ~180 ms | **~14 ms** |
+| Scatter render | crash | crash | **~14 ms** |
+| Normality battery n=50k | n/a | ~104 ms | **~60 ms** |
+| Subsampling setup n=50k | n/a | ~95 ms | **~5 ms** |
+| User sees chart (univariate) | full callback wait | full callback wait | **~14 ms** (split) |
+| User sees chart (bivariate) | full callback wait | full callback wait | **~15 ms** (split) |
+| JSON load 15k rows UTF-16 | ~810 ms | ~315 ms | **~315 ms** |
+| CSV load 1.6k rows | ~15 ms | ~5 ms | **~5 ms** |
+| Correlation matrix per call | O(p²n) | O(1) | O(1) |
+| PCA per interaction | n/a | n/a | O(1) |
 
 ---
 
@@ -270,29 +284,28 @@ Colour-coded banner (green/amber/red). Subsampling banner when n > 5 000. Skewne
 pip install -r requirements.txt
 ```
 
-### Core dependencies
+### Core dependencies (pinned versions)
 
 ```
-dash>=2.0
-dash-bootstrap-components>=1.0
-numpy>=1.24
-pandas>=2.0
-plotly>=5.0
-scipy>=1.10
-scikit-learn>=1.3
-orjson>=3.9
+dash==4.1.0
+dash-bootstrap-components==2.0.4
+numpy==2.4.6
+pandas==3.0.3
+plotly==6.6.0
+scipy==1.17.1
+scikit-learn==1.9.0
+orjson==3.11.9
 ```
 
 ### Optional (per file format)
 
 | Package | Formats |
 |---|---|
-| `openpyxl` | `.xlsx`, `.xlsm` (bundled with pandas) |
-| `xlrd` | `.xls` |
-| `odfpy` | `.ods` |
-| `pyarrow` | `.parquet` |
+| `openpyxl==3.1.5` | `.xlsx`, `.xlsm` |
+| `odfpy==1.4.1` | `.ods` |
+| `pyarrow==21.0.0` | `.parquet` |
 
-> **Note:** `statsmodels` is **not required** in v5. The scatter OLS trendline uses `numpy.polyfit`.
+> **Note:** `statsmodels` is **not required** in v5. OLS trendline uses `numpy.polyfit`.
 
 ---
 
@@ -309,9 +322,9 @@ orjson>=3.9
 | OpenDocument | `.ods` | Via odfpy |
 | Parquet | `.parquet` | Via pyarrow |
 
-**Encoding support:** UTF-8 (with/without BOM), UTF-16 LE/BE, UTF-32 LE/BE. Auto-detected from BOM bytes.
+**Encodings:** UTF-8 (±BOM), UTF-16 LE/BE, UTF-32 LE/BE — auto-detected.
 
-**French open-data formats:** Opendatasoft API v1/v2 (`values`, `results`, `records` wrappers), datasud.fr UTF-16 exports with embedded header rows — all handled automatically.
+**French open-data:** Opendatasoft API v1/v2, datasud.fr UTF-16 exports with embedded header rows — all handled automatically.
 
 ---
 
@@ -321,8 +334,18 @@ orjson>=3.9
 python eda_app.py
 ```
 
-Available at `http://localhost:8050`. For production WSGI deployment:
+Available at `http://localhost:8050`.
+
+### Production deployment (Gunicorn)
 
 ```bash
-gunicorn eda_app:server
+gunicorn eda_app:server --workers 1 --threads 4 --timeout 120
+```
+
+> **Workers = 1** is recommended because `store.py` uses module-level globals. With multiple workers, each worker has its own independent store — this is correct behaviour for a stateless deployment (each user session is isolated). Use `--threads 4` to handle concurrent requests within one worker.
+
+### Render / Railway / Fly.io
+
+```
+web: gunicorn eda_app:server --workers 1 --threads 4 --timeout 120
 ```
