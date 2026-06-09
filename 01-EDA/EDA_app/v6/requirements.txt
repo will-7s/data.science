@@ -1,0 +1,12 @@
+dash==4.1.0
+dash_bootstrap_components==2.0.4
+numpy==2.4.6
+orjson==3.11.9
+pandas==3.0.3
+plotly==6.6.0
+pyarrow==21.0.0
+scikit_learn==1.9.0
+scipy==1.17.1
+gunicorn==23.0.0
+openpyxl==3.1.5
+odfpy==1.4.1
