@@ -1,0 +1,30 @@
+# ── EDA_app level: files not part of any project version ────────────────
+
+# Debug screenshots
+debug_*.png
+debug_*.csv
+
+# Benchmark artifacts
+bench_results.json
+bench_*.py
+bottleneck_report.json
+
+# Scratch / charter
+charte.md
+
+# Old versions
+v7/
+hf-spaces/
+
+# Old readme artifacts
+README1.md
+README2.md
+
+# Data files (too large for git)
+*.csv
+*.xlsx
+*.xls
+*.pbix
+*.parquet
+*.jsonl
+*.docx

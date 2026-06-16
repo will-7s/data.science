@@ -94,7 +94,7 @@ project-root/
 
 ```bash
 git clone https://github.com/will-7s/data.science.git
-cd 01-EDA/v3/EDA_app/       # or v4 ... depending on the last version
+cd 01-EDA/EDA_app/v7/       # latest version — see CHANGELOG for history
 python -m venv venv
 source venv/bin/activate    # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
