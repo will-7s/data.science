@@ -1,13 +1,3 @@
----
-title: AB Testing App
-emoji: 📊
-colorFrom: blue
-colorTo: indigo
-sdk: docker
-app_port: 7860
-pinned: true
----
-
 # A/B Testing Analysis App
 
 Interactive A/B testing analysis platform combining frequentist and Bayesian methods with real-time visualizations.
