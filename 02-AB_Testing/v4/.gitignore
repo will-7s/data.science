@@ -27,11 +27,13 @@ _bmad-output/
 design-artifacts/
 deploy/
 
-# Data files
+# Data & documents
 *.csv
 *.xlsx
 *.xls
 *.parquet
+*.docx
+*.pdf
 
 # Outputs
 outputs/
