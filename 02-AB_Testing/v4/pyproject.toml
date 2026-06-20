@@ -1,0 +1,22 @@
+[project]
+name = "ab-testing-app"
+version = "0.1.0"
+requires-python = ">=3.12"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "benchmark: performance benchmarks (run with pytest tests/benchmark/ --benchmark)",
+    "integration: end-to-end Playwright UI tests",
+    "slow: slow tests that take more than a few seconds",
+    "property: property-based Hypothesis tests",
+]
+addopts = "--ignore=tests/benchmark --ignore=tests/test_integration.py"
+

@@ -1,0 +1,10 @@
+dash>=4.0.0,<5
+Flask-Compress>=1.17,<2
+numpy>=2.0.0,<3
+pandas>=3.0.0,<4
+plotly>=6.0.0,<7
+scipy>=1.14.0,<2
+statsmodels>=0.14.0,<1
+pyarrow>=15.0.0,<22
+openpyxl>=3.1.0,<4
+gunicorn>=23.0.0,<24

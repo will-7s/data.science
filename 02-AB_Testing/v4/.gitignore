@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Cache & quality
+.pytest_cache/
+.ruff_cache/
+.hypothesis/
+.benchmarks/
+
+# BMad methodology
+.agents/
+_bmad/
+_bmad-output/
+
+# OpenCode config
+.opencode/
+
+# Design & deploy
+design-artifacts/
+deploy/
+
+# Data files
+*.csv
+*.xlsx
+*.xls
+*.parquet
+
+# Outputs
+outputs/
+*.log
+out.txt
+err.txt
+
+# Tests
+tests/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.local
